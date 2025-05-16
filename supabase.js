@@ -6,7 +6,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 let supabase = null;
 
 // Função para inicializar o Supabase
-async function initSupabase() {
+async function initSupabase( ) {
     if (!supabase) {
         // Carrega a biblioteca do Supabase via CDN
         await loadSupabaseScript();
@@ -28,8 +28,9 @@ function loadSupabaseScript() {
 
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-        script.onload = () => {
-            window.supabaseClient = supabase;
+        script.onload = ( ) => {
+            // Aqui está a alteração: window.supabase em vez de supabase
+            window.supabaseClient = window.supabase;
             resolve();
         };
         script.onerror = () => {
