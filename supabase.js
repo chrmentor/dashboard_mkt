@@ -1,12 +1,12 @@
 // Configuração do Supabase
-const SUPABASE_URL = 'https://uvnhezzprjzlqkogcobl.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2bmhlenpwcmp6bHFrb2djb2JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MzE2MTAsImV4cCI6MjA2MzAwNzYxMH0.Juzb-P4iblp8EMZk-PToF3S0WGFbMpSM5Cb8X41MCh0';
+const SUPABASE_URL = 'SUA_URL_DO_SUPABASE';
+const SUPABASE_KEY = 'SUA_CHAVE_ANONIMA_DO_SUPABASE';
 
 // Inicialização do cliente Supabase
 let supabase = null;
 
 // Função para inicializar o Supabase
-async function initSupabase( ) {
+async function initSupabase() {
     if (!supabase) {
         // Carrega a biblioteca do Supabase via CDN
         await loadSupabaseScript();
@@ -28,9 +28,8 @@ function loadSupabaseScript() {
 
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-        script.onload = ( ) => {
-            // Aqui está a alteração: window.supabase em vez de supabase
-            window.supabaseClient = window.supabase;
+        script.onload = () => {
+            window.supabaseClient = supabase;
             resolve();
         };
         script.onerror = () => {
