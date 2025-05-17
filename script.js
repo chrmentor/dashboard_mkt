@@ -1,62 +1,215 @@
 // Script principal para o Dashboard com Supabase
-// Versão com visual original arredondado
+// Versão com visual original arredondado e efeitos de hover
 
 // Configuração do Supabase
 const SUPABASE_URL = 'https://uvnhezzprjzlqkogcobl.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2bmhlenpwcmp6bHFrb2djb2JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MzE2MTAsImV4cCI6MjA2MzAwNzYxMH0.Juzb-P4iblp8EMZk-PToF3S0WGFbMpSM5Cb8X41MCh0';
 
-// Inicialização do cliente Supabase diretamente (sem carregamento dinâmico)
-const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Inicialização do cliente Supabase
+let supabaseClient = null;
 
 // Variáveis globais
 let projetosFiltrados = [];
 let departamentoAtivo = 'todos';
 let projetosCarregados = false;
 
+// Função para obter o nome do site atual dinamicamente
+function getSiteName() {
+    return window.location.hostname || 'Dashboard de Projetos';
+}
+
+// Funções para o modal customizado
+function showCustomModal(title, message) {
+    const modal = document.getElementById('customModal');
+    const modalTitle = document.getElementById('customModalTitle');
+    const modalMessage = document.getElementById('customModalMessage');
+    
+    // Usar o domínio atual dinamicamente
+    modalTitle.textContent = title || `${getSiteName()} diz`;
+    modalMessage.textContent = message || '';
+    
+    modal.classList.add('show');
+    
+    // Adicionar evento de clique ao botão OK
+    document.getElementById('customModalButton').onclick = function() {
+        hideCustomModal();
+    };
+    
+    // Fechar modal ao clicar fora dele
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            hideCustomModal();
+        }
+    };
+}
+
+function hideCustomModal() {
+    const modal = document.getElementById('customModal');
+    modal.classList.remove('show');
+}
+
 // Elementos DOM
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM carregado, inicializando dashboard...");
+    console.log("Site atual:", getSiteName());
+    
+    // Inicializar Supabase
+    try {
+        // Usando a variável global supabase
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("Cliente Supabase inicializado com sucesso");
+    } catch (error) {
+        console.error("Erro ao inicializar Supabase:", error);
+        document.getElementById('projetos-container').innerHTML = 
+            `<div class="col-12"><div class="alert alert-danger">Erro ao inicializar Supabase. Verifique o console para mais detalhes.</div></div>`;
+        return;
+    }
+
     const projetosContainer = document.getElementById('projetos-container');
     const filterButtons = document.querySelectorAll('.filter-buttons button');
     const btnNovoProjeto = document.getElementById('btnNovoProjeto');
     const btnImportarProjetos = document.getElementById('btnImportarProjetos');
-    const novoprojetoModal = new bootstrap.Modal(document.getElementById('novoprojetoModal'));
-    const detalhesModal = new bootstrap.Modal(document.getElementById('detalhesModal'));
+    
+    // Garantir que os elementos modais existem antes de inicializá-los
+    const novoprojetoModalElement = document.getElementById('novoprojetoModal');
+    const detalhesModalElement = document.getElementById('detalhesModal');
+    
+    // Inicializar modais do Bootstrap
+    let novoprojetoModal, detalhesModal;
+    
+    if (novoprojetoModalElement) {
+        novoprojetoModal = new bootstrap.Modal(novoprojetoModalElement);
+        console.log("Modal de novo projeto inicializado");
+    } else {
+        console.error("Elemento modal de novo projeto não encontrado");
+    }
+    
+    if (detalhesModalElement) {
+        detalhesModal = new bootstrap.Modal(detalhesModalElement);
+        console.log("Modal de detalhes inicializado");
+    } else {
+        console.error("Elemento modal de detalhes não encontrado");
+    }
 
     // Carregar projetos
     carregarProjetos();
     
-    // Configurar filtros
+    // Configurar filtros - CORREÇÃO: Remover event listeners antigos e adicionar novos
     filterButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            departamentoAtivo = button.getAttribute('data-filter');
+        // Remover event listeners antigos para evitar duplicação
+        const oldButton = button.cloneNode(true);
+        button.parentNode.replaceChild(oldButton, button);
+        
+        // Adicionar novo event listener
+        oldButton.addEventListener('click', function() {
+            console.log(`Filtro clicado: ${this.getAttribute('data-filter')}`);
+            
+            // Remover classe active de todos os botões
+            filterButtons.forEach(btn => {
+                btn.classList.remove('active', 'btn-dark', 'btn-primary', 'btn-success', 'btn-purple', 'btn-orange', 'btn-warning');
+                
+                // Restaurar classes originais dos botões
+                if (btn.getAttribute('data-filter') === 'todos') {
+                    btn.classList.add('btn-outline-dark');
+                } else if (btn.getAttribute('data-filter') === 'programacao') {
+                    btn.classList.add('btn-outline-primary');
+                } else if (btn.getAttribute('data-filter') === 'copywriting') {
+                    btn.classList.add('btn-outline-success');
+                } else if (btn.getAttribute('data-filter') === 'design') {
+                    btn.classList.add('btn-outline-purple');
+                } else if (btn.getAttribute('data-filter') === 'social-media') {
+                    btn.classList.add('btn-outline-orange');
+                } else if (btn.getAttribute('data-filter') === 'prospeccao') {
+                    btn.classList.add('btn-outline-warning');
+                }
+            });
+            
+            // Adicionar classe active ao botão clicado
+            this.classList.add('active');
+            
+            // Adicionar classe de cor sólida ao botão ativo
+            if (this.getAttribute('data-filter') === 'todos') {
+                this.classList.remove('btn-outline-dark');
+                this.classList.add('btn-dark');
+            } else if (this.getAttribute('data-filter') === 'programacao') {
+                this.classList.remove('btn-outline-primary');
+                this.classList.add('btn-primary');
+            } else if (this.getAttribute('data-filter') === 'copywriting') {
+                this.classList.remove('btn-outline-success');
+                this.classList.add('btn-success');
+            } else if (this.getAttribute('data-filter') === 'design') {
+                this.classList.remove('btn-outline-purple');
+                this.classList.add('btn-purple');
+            } else if (this.getAttribute('data-filter') === 'social-media') {
+                this.classList.remove('btn-outline-orange');
+                this.classList.add('btn-orange');
+            } else if (this.getAttribute('data-filter') === 'prospeccao') {
+                this.classList.remove('btn-outline-warning');
+                this.classList.add('btn-warning');
+            }
+            
+            // Atualizar departamento ativo e filtrar projetos
+            departamentoAtivo = this.getAttribute('data-filter');
             filtrarProjetos();
         });
     });
     
     // Configurar botão de novo projeto
-    btnNovoProjeto.addEventListener('click', () => {
-        document.getElementById('novoprojetoForm').reset();
-        novoprojetoModal.show();
-    });
+    if (btnNovoProjeto) {
+        btnNovoProjeto.addEventListener('click', () => {
+            console.log("Botão Novo Projeto clicado");
+            document.getElementById('novoprojetoForm').reset();
+            novoprojetoModal.show();
+        });
+        console.log("Listener do botão Novo Projeto configurado");
+    } else {
+        console.error("Botão Novo Projeto não encontrado");
+    }
     
     // Configurar botão de salvar projeto
-    document.getElementById('salvarProjeto').addEventListener('click', salvarProjeto);
+    const btnSalvarProjeto = document.getElementById('salvarProjeto');
+    if (btnSalvarProjeto) {
+        btnSalvarProjeto.addEventListener('click', salvarProjeto);
+        console.log("Listener do botão Salvar Projeto configurado");
+    } else {
+        console.error("Botão Salvar Projeto não encontrado");
+    }
     
     // Configurar botão de importar projetos
-    btnImportarProjetos.addEventListener('click', () => {
-        if (confirm('Isso irá adicionar todos os projetos originais ao Supabase. Continuar?')) {
-            importarProjetosOriginais();
-        }
-    });
+    if (btnImportarProjetos) {
+        btnImportarProjetos.addEventListener('click', () => {
+            console.log("Botão Importar Projetos clicado");
+            if (confirm('Isso irá adicionar todos os projetos originais ao Supabase. Continuar?')) {
+                importarProjetosOriginais();
+            }
+        });
+        console.log("Listener do botão Importar Projetos configurado");
+    } else {
+        console.error("Botão Importar Projetos não encontrado");
+    }
+    
+    // Expor funções globalmente para uso nos botões inline
+    window.mostrarDetalhes = mostrarDetalhes;
+    window.excluirProjeto = excluirProjeto;
+    window.enviarEmail = enviarEmail;
 });
+
+// Função para enviar email (simulada)
+function enviarEmail(email) {
+    console.log(`Enviando email para: ${email}`);
+    showCustomModal(null, `Email enviado com sucesso para ${email}!`);
+}
 
 // Funções CRUD
 async function carregarProjetos() {
     const projetosContainer = document.getElementById('projetos-container');
     try {
-        const { data, error } = await supabase
+        console.log("Carregando projetos do Supabase...");
+        if (!supabaseClient) {
+            throw new Error("Cliente Supabase não inicializado");
+        }
+        
+        const { data, error } = await supabaseClient
             .from('projetos')
             .select('*')
             .order('created_at', { ascending: false });
@@ -65,12 +218,14 @@ async function carregarProjetos() {
             throw error;
         }
         
+        console.log(`${data ? data.length : 0} projetos carregados`);
+        
         if (data && data.length > 0) {
             projetosFiltrados = data;
             projetosCarregados = true;
             filtrarProjetos();
         } else {
-            projetosContainer.innerHTML = '<div class="col-12"><div class="alert alert-info">Nenhum projeto encontrado. Clique em "Novo Projeto" para adicionar.</div></div>';
+            projetosContainer.innerHTML = '<div class="col-12"><div class="alert alert-info">Nenhum projeto encontrado. Clique em "Novo Projeto" para adicionar ou use o botão "Importar Projetos Originais".</div></div>';
         }
     } catch (error) {
         console.error('Erro ao carregar projetos:', error);
@@ -78,64 +233,91 @@ async function carregarProjetos() {
     }
 }
 
+// CORREÇÃO: Função salvarProjeto corrigida para garantir compatibilidade com o Supabase
 async function salvarProjeto() {
-    const nome = document.getElementById('nome_projeto').value;
-    const departamento = document.getElementById('departamento').value;
-    const status = document.getElementById('status').value;
-    const dataInicio = document.getElementById('data_inicio').value;
-    const dataConclusao = document.getElementById('data_conclusao').value;
-    const descricao = document.getElementById('descricao').value;
-    const arquivosText = document.getElementById('arquivos').value;
-    const emailNotificacoes = document.getElementById('email_notificacoes').value;
-    
-    // Validar campos obrigatórios
-    if (!nome || !departamento || !status || !dataInicio || !dataConclusao || !descricao || !emailNotificacoes) {
-        alert('Por favor, preencha todos os campos obrigatórios.');
-        return;
-    }
-    
-    // Processar arquivos
-    const arquivos = arquivosText.split(/[,\n]/).map(url => url.trim()).filter(url => url);
-    
-    // Formatar datas para exibição
-    const dataInicioFormatada = formatarData(dataInicio);
-    const dataConclusaoFormatada = formatarData(dataConclusao);
-    
-    const novoProjeto = {
-        nome,
-        departamento,
-        status,
-        dataInicio: dataInicioFormatada,
-        dataConclusao: dataConclusaoFormatada,
-        descricao,
-        arquivos,
-        emailNotificacoes
-    };
-    
+    console.log("Função salvarProjeto iniciada");
     try {
-        const { data, error } = await supabase
+        const nome = document.getElementById('nome_projeto').value;
+        const departamento = document.getElementById('departamento').value;
+        const status = document.getElementById('status').value;
+        const dataInicio = document.getElementById('data_inicio').value;
+        const dataConclusao = document.getElementById('data_conclusao').value;
+        const descricao = document.getElementById('descricao').value;
+        const arquivosText = document.getElementById('arquivos').value;
+        const emailNotificacoes = document.getElementById('email_notificacoes').value;
+        
+        console.log("Valores dos campos:", {
+            nome, departamento, status, dataInicio, dataConclusao, 
+            descricao, arquivosText, emailNotificacoes
+        });
+        
+        // Validar campos obrigatórios
+        if (!nome || !departamento || !status || !dataInicio || !dataConclusao || !descricao || !emailNotificacoes) {
+            console.log("Validação falhou: campos obrigatórios não preenchidos");
+            showCustomModal(null, 'Por favor, preencha todos os campos obrigatórios.');
+            return;
+        }
+        
+        // Processar arquivos - CORREÇÃO: Garantir que arquivos seja sempre um array, mesmo vazio
+        let arquivos = [];
+        if (arquivosText && arquivosText.trim() !== '') {
+            arquivos = arquivosText.split(/[,\n]/).map(url => url.trim()).filter(url => url);
+        }
+        console.log("Arquivos processados:", arquivos);
+        
+        // Formatar datas para exibição - CORREÇÃO: Garantir formato correto
+        const dataInicioFormatada = formatarData(dataInicio);
+        const dataConclusaoFormatada = formatarData(dataConclusao);
+        console.log("Datas formatadas:", { dataInicioFormatada, dataConclusaoFormatada });
+        
+        const novoProjeto = {
+            nome: nome.trim(),
+            departamento: departamento.trim(),
+            status: status.trim(),
+            dataInicio: dataInicioFormatada,
+            dataConclusao: dataConclusaoFormatada,
+            descricao: descricao.trim(),
+            arquivos: arquivos,
+            emailNotificacoes: emailNotificacoes.trim()
+        };
+        
+        console.log("Objeto novoProjeto completo:", novoProjeto);
+        
+        // CORREÇÃO: Usar upsert em vez de insert para maior compatibilidade
+        console.log("Enviando para Supabase...");
+        const { data, error } = await supabaseClient
             .from('projetos')
-            .insert([novoProjeto])
+            .upsert([novoProjeto])
             .select();
         
         if (error) {
+            console.error("ERRO DETALHADO DO SUPABASE:", error);
             throw error;
         }
         
+        console.log("Projeto salvo com sucesso:", data);
+        
         const novoprojetoModal = bootstrap.Modal.getInstance(document.getElementById('novoprojetoModal'));
         novoprojetoModal.hide();
-        carregarProjetos();
-        alert('Projeto adicionado com sucesso!');
+        
+        // Mostrar mensagem de sucesso com modal customizado
+        showCustomModal(null, `Projeto "${nome}" adicionado com sucesso!`);
+        
+        // Recarregar projetos após salvar
+        setTimeout(() => {
+            carregarProjetos();
+        }, 500);
     } catch (error) {
         console.error('Erro ao salvar projeto:', error);
-        alert('Erro ao salvar projeto. Por favor, tente novamente.');
+        showCustomModal(null, 'Erro ao salvar projeto. Por favor, tente novamente.');
     }
 }
 
 async function excluirProjeto(id) {
+    console.log(`Excluindo projeto ID: ${id}`);
     if (confirm('Tem certeza que deseja excluir este projeto?')) {
         try {
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('projetos')
                 .delete()
                 .eq('id', id);
@@ -144,16 +326,19 @@ async function excluirProjeto(id) {
                 throw error;
             }
             
+            // Mostrar mensagem de sucesso com modal customizado
+            showCustomModal(null, 'Projeto excluído com sucesso!');
+            
             carregarProjetos();
-            alert('Projeto excluído com sucesso!');
         } catch (error) {
             console.error('Erro ao excluir projeto:', error);
-            alert('Erro ao excluir projeto. Por favor, tente novamente.');
+            showCustomModal(null, 'Erro ao excluir projeto. Por favor, tente novamente.');
         }
     }
 }
 
 function mostrarDetalhes(projeto) {
+    console.log("Mostrando detalhes do projeto:", projeto.nome);
     const detalhesConteudo = document.getElementById('detalhes-conteudo');
     
     let arquivosHTML = '';
@@ -186,6 +371,7 @@ function mostrarDetalhes(projeto) {
 function filtrarProjetos() {
     if (!projetosCarregados) return;
     
+    console.log(`Filtrando projetos por departamento: ${departamentoAtivo}`);
     const projetosFiltradosPorDepartamento = departamentoAtivo === 'todos' 
         ? projetosFiltrados 
         : projetosFiltrados.filter(projeto => projeto.departamento === departamentoAtivo);
@@ -194,6 +380,7 @@ function filtrarProjetos() {
 }
 
 function renderizarProjetos(projetos) {
+    console.log(`Renderizando ${projetos.length} projetos`);
     const projetosContainer = document.getElementById('projetos-container');
     
     if (projetos.length === 0) {
@@ -211,20 +398,23 @@ function renderizarProjetos(projetos) {
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="card-text">${getDepartamentoLabel(projeto.departamento)}</p>
+                    <div class="departamento">${getDepartamentoLabel(projeto.departamento)}</div>
                     <p class="card-text">${projeto.descricao.substring(0, 100)}${projeto.descricao.length > 100 ? '...' : ''}</p>
+                    <div class="card-actions">
+                        <button class="btn-email" onclick="enviarEmail('${projeto.emailNotificacoes}')">
+                            <i class="bi bi-envelope"></i> Enviar Email
+                        </button>
+                        <button class="btn-detalhes" onclick='mostrarDetalhes(${JSON.stringify(projeto).replace(/"/g, "&quot;")})'>
+                            <i class="bi bi-eye"></i> Ver Detalhes
+                        </button>
+                        <button class="btn-excluir" onclick="excluirProjeto('${projeto.id}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-footer bg-transparent">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted">Início: ${projeto.dataInicio} Fim: ${projeto.dataConclusao}</small>
-                        <div>
-                            <button class="btn btn-info btn-sm" onclick='mostrarDetalhes(${JSON.stringify(projeto).replace(/"/g, "&quot;")})'>
-                                <i class="bi bi-eye"></i> Ver Detalhes
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="excluirProjeto('${projeto.id}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                    <div class="datas">
+                        Início: ${projeto.dataInicio} Fim: ${projeto.dataConclusao}
                     </div>
                 </div>
             </div>
@@ -235,7 +425,7 @@ function renderizarProjetos(projetos) {
 function getStatusLabel(status) {
     switch (status) {
         case 'pendente': return 'Pendente';
-        case 'em-andamento': return 'Em andamento';
+        case 'em-andamento': return 'Em Andamento';
         case 'concluido': return 'Concluído';
         default: return status;
     }
@@ -252,11 +442,34 @@ function getDepartamentoLabel(departamento) {
     }
 }
 
+// CORREÇÃO: Função formatarData melhorada para garantir formato correto
 function formatarData(dataISO) {
     if (!dataISO) return '';
-    const partes = dataISO.split('-');
-    if (partes.length !== 3) return dataISO;
-    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    
+    try {
+        // Verificar se é uma data válida
+        const data = new Date(dataISO);
+        if (isNaN(data.getTime())) {
+            // Se não for uma data válida, tentar formato DD/MM/YYYY
+            const partes = dataISO.split('/');
+            if (partes.length === 3) {
+                return dataISO; // Já está no formato DD/MM/YYYY
+            }
+            return '';
+        }
+        
+        // Converter de YYYY-MM-DD para DD/MM/YYYY
+        const partes = dataISO.split('-');
+        if (partes.length === 3) {
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+        
+        // Fallback: retornar a data original se não conseguir formatar
+        return dataISO;
+    } catch (e) {
+        console.error("Erro ao formatar data:", e);
+        return dataISO; // Retornar a data original em caso de erro
+    }
 }
 
 // Função para importar projetos originais
@@ -403,28 +616,33 @@ async function importarProjetosOriginais() {
 
     for (const projeto of projetosOriginais) {
         try {
-            const { data, error } = await supabase
+            console.log(`Importando projeto: ${projeto.nome}`);
+            // CORREÇÃO: Usar upsert em vez de insert para maior compatibilidade
+            const { data, error } = await supabaseClient
                 .from('projetos')
-                .insert([projeto])
+                .upsert([projeto])
                 .select();
             
             if (error) {
-                falhas++;
-                console.error(`Falha ao adicionar projeto: ${projeto.nome}`, error);
-            } else {
+                throw error;
+            }
+            
+            if (data) {
                 sucessos++;
-                console.log(`Projeto adicionado com sucesso: ${projeto.nome}`);
+                console.log(`Projeto importado com sucesso: ${projeto.nome}`);
             }
         } catch (error) {
             falhas++;
-            console.error(`Erro ao adicionar projeto ${projeto.nome}:`, error);
+            console.error(`Erro ao importar projeto ${projeto.nome}:`, error);
         }
     }
 
     console.log(`Importação concluída! Sucessos: ${sucessos}, Falhas: ${falhas}`);
-    alert(`Importação de projetos concluída!\nProjetos adicionados: ${sucessos}\nFalhas: ${falhas}\n\nAtualize a página para ver os projetos.`);
     
-    // Recarregar projetos
+    // Mostrar mensagem de sucesso com modal customizado
+    showCustomModal(null, `Importação concluída! Projetos adicionados: ${sucessos}, Falhas: ${falhas}`);
+    
+    // Recarregar projetos após importação
     if (sucessos > 0) {
         carregarProjetos();
     }
