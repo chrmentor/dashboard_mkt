@@ -1,5 +1,5 @@
 // Script principal para o Dashboard com Supabase
-// Versão alternativa para contornar problemas de CORS
+// Versão com visual original arredondado
 
 // Configuração do Supabase
 const SUPABASE_URL = 'https://uvnhezzprjzlqkogcobl.supabase.co';
@@ -14,15 +14,14 @@ let departamentoAtivo = 'todos';
 let projetosCarregados = false;
 
 // Elementos DOM
-const projetosContainer = document.getElementById('projetos-container');
-const filterButtons = document.querySelectorAll('.filter-buttons button');
-const btnNovoProjeto = document.getElementById('btnNovoProjeto');
-const btnImportarProjetos = document.getElementById('btnImportarProjetos');
-const novoprojetoModal = new bootstrap.Modal(document.getElementById('novoprojetoModal'));
-const detalhesModal = new bootstrap.Modal(document.getElementById('detalhesModal'));
-
-// Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
+    const projetosContainer = document.getElementById('projetos-container');
+    const filterButtons = document.querySelectorAll('.filter-buttons button');
+    const btnNovoProjeto = document.getElementById('btnNovoProjeto');
+    const btnImportarProjetos = document.getElementById('btnImportarProjetos');
+    const novoprojetoModal = new bootstrap.Modal(document.getElementById('novoprojetoModal'));
+    const detalhesModal = new bootstrap.Modal(document.getElementById('detalhesModal'));
+
     // Carregar projetos
     carregarProjetos();
     
@@ -55,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Funções CRUD
 async function carregarProjetos() {
+    const projetosContainer = document.getElementById('projetos-container');
     try {
         const { data, error } = await supabase
             .from('projetos')
@@ -122,6 +122,7 @@ async function salvarProjeto() {
             throw error;
         }
         
+        const novoprojetoModal = bootstrap.Modal.getInstance(document.getElementById('novoprojetoModal'));
         novoprojetoModal.hide();
         carregarProjetos();
         alert('Projeto adicionado com sucesso!');
@@ -167,7 +168,7 @@ function mostrarDetalhes(projeto) {
     
     detalhesConteudo.innerHTML = `
         <h4>${projeto.nome}</h4>
-        <div class="badge ${getStatusBadgeClass(projeto.status)} mb-3">${getStatusLabel(projeto.status)}</div>
+        <div class="badge status-badge status-${projeto.status} mb-3">${getStatusLabel(projeto.status)}</div>
         <p><strong>Departamento:</strong> ${getDepartamentoLabel(projeto.departamento)}</p>
         <p><strong>Data de Início:</strong> ${projeto.dataInicio}</p>
         <p><strong>Data de Conclusão:</strong> ${projeto.dataConclusao}</p>
@@ -176,6 +177,8 @@ function mostrarDetalhes(projeto) {
         <p><strong>E-mail para Notificações:</strong> ${projeto.emailNotificacoes}</p>
     `;
     
+    const detalhesModal = bootstrap.Modal.getInstance(document.getElementById('detalhesModal')) || 
+                          new bootstrap.Modal(document.getElementById('detalhesModal'));
     detalhesModal.show();
 }
 
@@ -191,6 +194,8 @@ function filtrarProjetos() {
 }
 
 function renderizarProjetos(projetos) {
+    const projetosContainer = document.getElementById('projetos-container');
+    
     if (projetos.length === 0) {
         projetosContainer.innerHTML = '<div class="col-12"><div class="alert alert-info">Nenhum projeto encontrado para este filtro.</div></div>';
         return;
@@ -202,7 +207,7 @@ function renderizarProjetos(projetos) {
                 <div class="card-header card-header-${projeto.status}">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">${projeto.nome}</h5>
-                        <div class="badge ${getStatusBadgeClass(projeto.status)}">${getStatusLabel(projeto.status)}</div>
+                        <div class="badge status-badge status-${projeto.status}">${getStatusLabel(projeto.status)}</div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -213,7 +218,7 @@ function renderizarProjetos(projetos) {
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted">Início: ${projeto.dataInicio} Fim: ${projeto.dataConclusao}</small>
                         <div>
-                            <button class="btn btn-info btn-sm" onclick="mostrarDetalhes(${JSON.stringify(projeto).replace(/"/g, '&quot;')})">
+                            <button class="btn btn-info btn-sm" onclick='mostrarDetalhes(${JSON.stringify(projeto).replace(/"/g, "&quot;")})'>
                                 <i class="bi bi-eye"></i> Ver Detalhes
                             </button>
                             <button class="btn btn-danger btn-sm" onclick="excluirProjeto('${projeto.id}')">
@@ -233,15 +238,6 @@ function getStatusLabel(status) {
         case 'em-andamento': return 'Em andamento';
         case 'concluido': return 'Concluído';
         default: return status;
-    }
-}
-
-function getStatusBadgeClass(status) {
-    switch (status) {
-        case 'pendente': return 'bg-warning text-dark';
-        case 'em-andamento': return 'bg-primary';
-        case 'concluido': return 'bg-success';
-        default: return 'bg-secondary';
     }
 }
 
