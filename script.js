@@ -1,12 +1,5 @@
-// Script principal para o Dashboard com Supabase
+// Script principal para o Dashboard com Sheet2DB
 // Versão com visual original arredondado e efeitos de hover
-
-// Configuração do Supabase
-const SUPABASE_URL = 'https://uvnhezzprjzlqkogcobl.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2bmhlenpwcmp6bHFrb2djb2JsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc0MzE2MTAsImV4cCI6MjA2MzAwNzYxMH0.Juzb-P4iblp8EMZk-PToF3S0WGFbMpSM5Cb8X41MCh0';
-
-// Inicialização do cliente Supabase
-let supabaseClient = null;
 
 // Variáveis globais
 let projetosFiltrados = [];
@@ -52,18 +45,6 @@ function hideCustomModal() {
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM carregado, inicializando dashboard...");
     console.log("Site atual:", getSiteName());
-    
-    // Inicializar Supabase
-    try {
-        // Usando a variável global supabase
-        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log("Cliente Supabase inicializado com sucesso");
-    } catch (error) {
-        console.error("Erro ao inicializar Supabase:", error);
-        document.getElementById('projetos-container').innerHTML = 
-            `<div class="col-12"><div class="alert alert-danger">Erro ao inicializar Supabase. Verifique o console para mais detalhes.</div></div>`;
-        return;
-    }
 
     const projetosContainer = document.getElementById('projetos-container');
     const filterButtons = document.querySelectorAll('.filter-buttons button');
@@ -179,8 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnImportarProjetos) {
         btnImportarProjetos.addEventListener('click', () => {
             console.log("Botão Importar Projetos clicado");
-            if (confirm('Isso irá adicionar todos os projetos originais ao Supabase. Continuar?')) {
-                importarProjetosOriginais();
+            if (confirm('Isso irá adicionar projetos de exemplo à planilha. Continuar?')) {
+                importarProjetosExemplo();
             }
         });
         console.log("Listener do botão Importar Projetos configurado");
@@ -204,19 +185,10 @@ function enviarEmail(email) {
 async function carregarProjetos() {
     const projetosContainer = document.getElementById('projetos-container');
     try {
-        console.log("Carregando projetos do Supabase...");
-        if (!supabaseClient) {
-            throw new Error("Cliente Supabase não inicializado");
-        }
+        console.log("Carregando projetos do Sheet2DB...");
         
-        const { data, error } = await supabaseClient
-            .from('projetos')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
-        if (error) {
-            throw error;
-        }
+        // Usar a função do sheet2db.js para buscar projetos
+        const data = await buscarProjetos();
         
         console.log(`${data ? data.length : 0} projetos carregados`);
         
@@ -229,11 +201,10 @@ async function carregarProjetos() {
         }
     } catch (error) {
         console.error('Erro ao carregar projetos:', error);
-        projetosContainer.innerHTML = `<div class="col-12"><div class="alert alert-danger">Erro ao carregar projetos. Verifique suas credenciais do Supabase e tente novamente.</div></div>`;
+        projetosContainer.innerHTML = `<div class="col-12"><div class="alert alert-danger">Erro ao carregar projetos. Verifique suas credenciais do Sheet2DB e tente novamente.</div></div>`;
     }
 }
 
-// CORREÇÃO: Função salvarProjeto corrigida para garantir compatibilidade com o Supabase
 async function salvarProjeto() {
     console.log("Função salvarProjeto iniciada");
     try {
@@ -258,14 +229,14 @@ async function salvarProjeto() {
             return;
         }
         
-        // Processar arquivos - CORREÇÃO: Garantir que arquivos seja sempre um array, mesmo vazio
+        // Processar arquivos
         let arquivos = [];
         if (arquivosText && arquivosText.trim() !== '') {
             arquivos = arquivosText.split(/[,\n]/).map(url => url.trim()).filter(url => url);
         }
         console.log("Arquivos processados:", arquivos);
         
-        // Formatar datas para exibição - CORREÇÃO: Garantir formato correto
+        // Formatar datas para exibição
         const dataInicioFormatada = formatarData(dataInicio);
         const dataConclusaoFormatada = formatarData(dataConclusao);
         console.log("Datas formatadas:", { dataInicioFormatada, dataConclusaoFormatada });
@@ -283,16 +254,11 @@ async function salvarProjeto() {
         
         console.log("Objeto novoProjeto completo:", novoProjeto);
         
-        // CORREÇÃO: Usar upsert em vez de insert para maior compatibilidade
-        console.log("Enviando para Supabase...");
-        const { data, error } = await supabaseClient
-            .from('projetos')
-            .upsert([novoProjeto])
-            .select();
+        // Usar a função do sheet2db.js para adicionar projeto
+        const data = await adicionarProjeto(novoProjeto);
         
-        if (error) {
-            console.error("ERRO DETALHADO DO SUPABASE:", error);
-            throw error;
+        if (!data) {
+            throw new Error("Falha ao adicionar projeto");
         }
         
         console.log("Projeto salvo com sucesso:", data);
@@ -317,13 +283,11 @@ async function excluirProjeto(id) {
     console.log(`Excluindo projeto ID: ${id}`);
     if (confirm('Tem certeza que deseja excluir este projeto?')) {
         try {
-            const { error } = await supabaseClient
-                .from('projetos')
-                .delete()
-                .eq('id', id);
+            // Usar a função do sheet2db.js para excluir projeto
+            const success = await excluirProjeto(id);
             
-            if (error) {
-                throw error;
+            if (!success) {
+                throw new Error("Falha ao excluir projeto");
             }
             
             // Mostrar mensagem de sucesso com modal customizado
@@ -337,34 +301,48 @@ async function excluirProjeto(id) {
     }
 }
 
-function mostrarDetalhes(projeto) {
-    console.log("Mostrando detalhes do projeto:", projeto.nome);
-    const detalhesConteudo = document.getElementById('detalhes-conteudo');
-    
-    let arquivosHTML = '';
-    if (projeto.arquivos && projeto.arquivos.length > 0) {
-        arquivosHTML = `
-            <h6>Arquivos:</h6>
-            <ul>
-                ${projeto.arquivos.map(arquivo => `<li><a href="${arquivo}" target="_blank">${arquivo}</a></li>`).join('')}
-            </ul>
+async function mostrarDetalhes(id) {
+    try {
+        console.log(`Buscando detalhes do projeto ID: ${id}`);
+        
+        // Usar a função do sheet2db.js para buscar projeto por ID
+        const projeto = await buscarProjetoPorId(id);
+        
+        if (!projeto) {
+            throw new Error("Projeto não encontrado");
+        }
+        
+        console.log("Mostrando detalhes do projeto:", projeto.nome);
+        const detalhesConteudo = document.getElementById('detalhes-conteudo');
+        
+        let arquivosHTML = '';
+        if (projeto.arquivos && projeto.arquivos.length > 0) {
+            arquivosHTML = `
+                <h6>Arquivos:</h6>
+                <ul>
+                    ${projeto.arquivos.map(arquivo => `<li><a href="${arquivo}" target="_blank">${arquivo}</a></li>`).join('')}
+                </ul>
+            `;
+        }
+        
+        detalhesConteudo.innerHTML = `
+            <h4>${projeto.nome}</h4>
+            <div class="badge status-badge status-${projeto.status} mb-3">${getStatusLabel(projeto.status)}</div>
+            <p><strong>Departamento:</strong> ${getDepartamentoLabel(projeto.departamento)}</p>
+            <p><strong>Data de Início:</strong> ${projeto.dataInicio}</p>
+            <p><strong>Data de Conclusão:</strong> ${projeto.dataConclusao}</p>
+            <p><strong>Descrição:</strong> ${projeto.descricao}</p>
+            ${arquivosHTML}
+            <p><strong>E-mail para Notificações:</strong> ${projeto.emailNotificacoes}</p>
         `;
+        
+        const detalhesModal = bootstrap.Modal.getInstance(document.getElementById('detalhesModal')) || 
+                            new bootstrap.Modal(document.getElementById('detalhesModal'));
+        detalhesModal.show();
+    } catch (error) {
+        console.error('Erro ao mostrar detalhes do projeto:', error);
+        showCustomModal(null, 'Erro ao carregar detalhes do projeto. Por favor, tente novamente.');
     }
-    
-    detalhesConteudo.innerHTML = `
-        <h4>${projeto.nome}</h4>
-        <div class="badge status-badge status-${projeto.status} mb-3">${getStatusLabel(projeto.status)}</div>
-        <p><strong>Departamento:</strong> ${getDepartamentoLabel(projeto.departamento)}</p>
-        <p><strong>Data de Início:</strong> ${projeto.dataInicio}</p>
-        <p><strong>Data de Conclusão:</strong> ${projeto.dataConclusao}</p>
-        <p><strong>Descrição:</strong> ${projeto.descricao}</p>
-        ${arquivosHTML}
-        <p><strong>E-mail para Notificações:</strong> ${projeto.emailNotificacoes}</p>
-    `;
-    
-    const detalhesModal = bootstrap.Modal.getInstance(document.getElementById('detalhesModal')) || 
-                          new bootstrap.Modal(document.getElementById('detalhesModal'));
-    detalhesModal.show();
 }
 
 // Funções auxiliares
@@ -384,266 +362,105 @@ function renderizarProjetos(projetos) {
     const projetosContainer = document.getElementById('projetos-container');
     
     if (projetos.length === 0) {
-        projetosContainer.innerHTML = '<div class="col-12"><div class="alert alert-info">Nenhum projeto encontrado para este filtro.</div></div>';
+        projetosContainer.innerHTML = '<div class="col-12"><div class="alert alert-info">Nenhum projeto encontrado para o filtro selecionado.</div></div>';
         return;
     }
     
-    projetosContainer.innerHTML = projetos.map(projeto => `
-        <div class="col">
-            <div class="card h-100">
-                <div class="card-header card-header-${projeto.status}">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">${projeto.nome}</h5>
-                        <div class="badge status-badge status-${projeto.status}">${getStatusLabel(projeto.status)}</div>
+    let html = '';
+    
+    projetos.forEach(projeto => {
+        // Determinar classe de cabeçalho com base no status
+        const headerClass = `card-header-${projeto.status}`;
+        
+        // Criar HTML para o card do projeto
+        html += `
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-header ${headerClass}">
+                        <h5 class="card-title">${projeto.nome}</h5>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="departamento">${getDepartamentoLabel(projeto.departamento)}</div>
-                    <p class="card-text">${projeto.descricao.substring(0, 100)}${projeto.descricao.length > 100 ? '...' : ''}</p>
-                    <div class="card-actions">
-                        <button class="btn-email" onclick="enviarEmail('${projeto.emailNotificacoes}')">
-                            <i class="bi bi-envelope"></i> Enviar Email
-                        </button>
-                        <button class="btn-detalhes" onclick='mostrarDetalhes(${JSON.stringify(projeto).replace(/"/g, "&quot;")})'>
-                            <i class="bi bi-eye"></i> Ver Detalhes
-                        </button>
-                        <button class="btn-excluir" onclick="excluirProjeto('${projeto.id}')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-footer bg-transparent">
-                    <div class="datas">
-                        Início: ${projeto.dataInicio} Fim: ${projeto.dataConclusao}
+                    <div class="card-body">
+                        <div class="departamento">${getDepartamentoLabel(projeto.departamento)}</div>
+                        <p class="card-text">${truncateText(projeto.descricao, 100)}</p>
+                        <div class="datas">
+                            <i class="bi bi-calendar"></i> ${projeto.dataInicio} - ${projeto.dataConclusao}
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-email" onclick="enviarEmail('${projeto.emailNotificacoes}')">
+                                <i class="bi bi-envelope"></i> Email
+                            </button>
+                            <button class="btn btn-detalhes" onclick="mostrarDetalhes('${projeto.id}')">
+                                <i class="bi bi-eye"></i> Ver Detalhes
+                            </button>
+                            <button class="btn btn-excluir" onclick="excluirProjeto('${projeto.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    });
+    
+    projetosContainer.innerHTML = html;
+}
+
+async function importarProjetosExemplo() {
+    try {
+        console.log("Importando projetos de exemplo...");
+        
+        // Usar a função do sheet2db.js para importar projetos de exemplo
+        const projetos = await importarProjetosExemplo();
+        
+        if (projetos && projetos.length > 0) {
+            showCustomModal(null, `${projetos.length} projetos de exemplo importados com sucesso!`);
+            carregarProjetos();
+        } else {
+            showCustomModal(null, 'Nenhum projeto foi importado. Tente novamente.');
+        }
+    } catch (error) {
+        console.error('Erro ao importar projetos de exemplo:', error);
+        showCustomModal(null, 'Erro ao importar projetos de exemplo. Por favor, tente novamente.');
+    }
+}
+
+// Funções utilitárias
+function formatarData(dataString) {
+    if (!dataString) return '';
+    
+    try {
+        const data = new Date(dataString);
+        return data.toLocaleDateString('pt-BR');
+    } catch (error) {
+        console.error('Erro ao formatar data:', error);
+        return dataString;
+    }
 }
 
 function getStatusLabel(status) {
-    switch (status) {
-        case 'pendente': return 'Pendente';
-        case 'em-andamento': return 'Em Andamento';
-        case 'concluido': return 'Concluído';
-        default: return status;
-    }
+    const statusMap = {
+        'pendente': 'Pendente',
+        'em-andamento': 'Em Andamento',
+        'concluido': 'Concluído'
+    };
+    
+    return statusMap[status] || status;
 }
 
 function getDepartamentoLabel(departamento) {
-    switch (departamento) {
-        case 'programacao': return 'Programação';
-        case 'copywriting': return 'Copywriting';
-        case 'design': return 'Design';
-        case 'social-media': return 'Social Media';
-        case 'prospeccao': return 'Prospecção/SDR';
-        default: return departamento;
-    }
+    const departamentoMap = {
+        'programacao': 'Programação',
+        'copywriting': 'Copywriting',
+        'design': 'Design',
+        'social-media': 'Social Media',
+        'prospeccao': 'Prospecção/SDR'
+    };
+    
+    return departamentoMap[departamento] || departamento;
 }
 
-// CORREÇÃO: Função formatarData melhorada para garantir formato correto
-function formatarData(dataISO) {
-    if (!dataISO) return '';
-    
-    try {
-        // Verificar se é uma data válida
-        const data = new Date(dataISO);
-        if (isNaN(data.getTime())) {
-            // Se não for uma data válida, tentar formato DD/MM/YYYY
-            const partes = dataISO.split('/');
-            if (partes.length === 3) {
-                return dataISO; // Já está no formato DD/MM/YYYY
-            }
-            return '';
-        }
-        
-        // Converter de YYYY-MM-DD para DD/MM/YYYY
-        const partes = dataISO.split('-');
-        if (partes.length === 3) {
-            return `${partes[2]}/${partes[1]}/${partes[0]}`;
-        }
-        
-        // Fallback: retornar a data original se não conseguir formatar
-        return dataISO;
-    } catch (e) {
-        console.error("Erro ao formatar data:", e);
-        return dataISO; // Retornar a data original em caso de erro
-    }
-}
-
-// Função para importar projetos originais
-async function importarProjetosOriginais() {
-    console.log("Iniciando importação de projetos originais...");
-    
-    // Lista de projetos originais
-    const projetosOriginais = [
-        {
-            nome: "Campanha de Lançamento",
-            departamento: "copywriting",
-            status: "concluido",
-            dataInicio: "01/04/2025",
-            dataConclusao: "15/04/2025",
-            descricao: "Criação de textos para campanha de lançamento do novo produto.",
-            arquivos: ["https://github.com/manus-projects/campanha-lancamento", "documentacao_campanha.pdf"],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Website Responsivo",
-            departamento: "programacao",
-            status: "em-andamento",
-            dataInicio: "10/04/2025",
-            dataConclusao: "10/05/2025",
-            descricao: "Desenvolvimento de website responsivo com painel administrativo.",
-            arquivos: ["https://github.com/manus-projects/website-responsivo", "documentacao_api.pdf"],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Estratégia Instagram",
-            departamento: "social-media",
-            status: "pendente",
-            dataInicio: "20/04/2025",
-            dataConclusao: "05/05/2025",
-            descricao: "Planejamento de conteúdo e estratégia para Instagram.",
-            arquivos: ["plano_instagram.pdf"],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Identidade Visual",
-            departamento: "design",
-            status: "em-andamento",
-            dataInicio: "05/04/2025",
-            dataConclusao: "25/04/2025",
-            descricao: "Criação de logo, paleta de cores e elementos visuais.",
-            arquivos: ["https://github.com/manus-projects/identidade-visual", "manual_marca.pdf"],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Prospecção B2B",
-            departamento: "prospeccao",
-            status: "pendente",
-            dataInicio: "22/04/2025",
-            dataConclusao: "22/05/2025",
-            descricao: "Identificação e qualificação de leads para o setor de tecnologia.",
-            arquivos: ["lista_leads.xlsx"],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Simulador de Impostos para Infoprodutores",
-            departamento: "programacao",
-            status: "em-andamento",
-            dataInicio: "20/04/2025",
-            dataConclusao: "05/05/2025",
-            descricao: "Simulador de impostos que compara os regimes tributários MEI, Simples Nacional e Lucro Presumido para Infoprodutores e afiliados.",
-            arquivos: ["https://unzqrdek.manus.space", "https://github.com/manus-projects/simulador-impostos-infoprodutores"],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Criação Simulador de Impostos Caminhoneiros",
-            departamento: "programacao",
-            status: "pendente",
-            dataInicio: "27/05/2025",
-            dataConclusao: "29/06/2025",
-            descricao: "Criação Simulador de Impostos Caminhoneiros",
-            arquivos: [],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Criação Chatbot Próprio para Caminhoneiros",
-            departamento: "programacao",
-            status: "pendente",
-            dataInicio: "23/04/2025",
-            dataConclusao: "30/05/2025",
-            descricao: "Criação Chatbot Próprio da Mentorial, para atender Caminhoneiros.",
-            arquivos: [],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Captura de Leads Caminhoneiros - Ebook Gratuito",
-            departamento: "prospeccao",
-            status: "em-andamento",
-            dataInicio: "05/04/2025",
-            dataConclusao: "30/05/2025",
-            descricao: "Rotando tráfego pago para capturar leads caminhoneiros através de entrega de ebook gratuito.",
-            arquivos: [],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Simulador de Impostos Para Médicos, com valor no final - Tráfego Pago",
-            departamento: "programacao",
-            status: "pendente",
-            dataInicio: "29/04/2025",
-            dataConclusao: "14/05/2025",
-            descricao: "Simulador de Impostos Para Médicos, com valor no final - Tráfego Pago",
-            arquivos: [],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Captura de Leads Empresas Paralisadas",
-            departamento: "prospeccao",
-            status: "pendente",
-            dataInicio: "29/04/2025",
-            dataConclusao: "14/05/2025",
-            descricao: "Tráfego pago para Captura de Leads Empresas Paralisadas",
-            arquivos: [],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Contratação de Social Media Terceirizado",
-            departamento: "social-media",
-            status: "pendente",
-            dataInicio: "01/05/2025",
-            dataConclusao: "15/05/2025",
-            descricao: "Análise Para Contratação de Social Media Terceirizado",
-            arquivos: [],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        },
-        {
-            nome: "Repaginação Site com a ajuda da Manus",
-            departamento: "design",
-            status: "pendente",
-            dataInicio: "01/05/2025",
-            dataConclusao: "15/05/2025",
-            descricao: "Repaginação Site com a ajuda da Manus",
-            arquivos: [],
-            emailNotificacoes: "christian.mentorial@gmail.com"
-        }
-    ];
-
-    // Adicionar cada projeto ao Supabase
-    let sucessos = 0;
-    let falhas = 0;
-
-    for (const projeto of projetosOriginais) {
-        try {
-            console.log(`Importando projeto: ${projeto.nome}`);
-            // CORREÇÃO: Usar upsert em vez de insert para maior compatibilidade
-            const { data, error } = await supabaseClient
-                .from('projetos')
-                .upsert([projeto])
-                .select();
-            
-            if (error) {
-                throw error;
-            }
-            
-            if (data) {
-                sucessos++;
-                console.log(`Projeto importado com sucesso: ${projeto.nome}`);
-            }
-        } catch (error) {
-            falhas++;
-            console.error(`Erro ao importar projeto ${projeto.nome}:`, error);
-        }
-    }
-
-    console.log(`Importação concluída! Sucessos: ${sucessos}, Falhas: ${falhas}`);
-    
-    // Mostrar mensagem de sucesso com modal customizado
-    showCustomModal(null, `Importação concluída! Projetos adicionados: ${sucessos}, Falhas: ${falhas}`);
-    
-    // Recarregar projetos após importação
-    if (sucessos > 0) {
-        carregarProjetos();
-    }
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
 }
