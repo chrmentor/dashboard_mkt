@@ -1,6 +1,6 @@
 // Configuração do Sheet2DB
 const SHEET2DB_API_URL = 'https://api.sheet2db.com/v1/bed7166a-4d9a-421a-8454-9104d20dd4a5';
-const SHEET2DB_API_KEY = ''; // Deixe vazio se não configurou uma chave de API
+const SHEET2DB_API_KEY = 'bed7166a-4d9a-421a-8454-9104d20dd4a5'; // Deixe vazio se não configurou uma chave de API
 
 // Funções CRUD para projetos usando Sheet2DB
 async function buscarProjetos() {
