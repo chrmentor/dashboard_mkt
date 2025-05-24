@@ -1,29 +1,26 @@
 // Configuração do Sheet2DB
-const SHEET2DB_API_URL = 'SUA_URL_DA_API_SHEET2DB';
-const SHEET2DB_API_KEY = 'SUA_CHAVE_DA_API_SHEET2DB';
+const SHEET2DB_API_URL = 'https://api.sheet2db.com/v1/bed7166a-4d9a-421a-8454-9104d20dd4a5';
+const SHEET2DB_API_KEY = ''; // Deixe vazio se não configurou uma chave de API
 
 // Funções CRUD para projetos usando Sheet2DB
 async function buscarProjetos() {
+    console.log("Buscando projetos do Sheet2DB");
+    
     try {
-        const response = await fetch(`${SHEET2DB_API_URL}?apiKey=${SHEET2DB_API_KEY}`);
+        const response = await fetch(SHEET2DB_API_URL, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(SHEET2DB_API_KEY && { 'x-api-key': SHEET2DB_API_KEY })
+            }
+        });
         
         if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+            throw new Error(`Erro ao buscar projetos: ${response.status}`);
         }
         
         const data = await response.json();
-        
-        // Processar os dados para garantir compatibilidade com o formato esperado
-        return data.map(projeto => {
-            // Converter string de arquivos separados por pipe para array
-            if (projeto.arquivos && typeof projeto.arquivos === 'string') {
-                projeto.arquivos = projeto.arquivos.split('|').filter(url => url.trim() !== '');
-            } else {
-                projeto.arquivos = [];
-            }
-            
-            return projeto;
-        });
+        return Array.isArray(data) ? data : [];
     } catch (error) {
         console.error('Erro ao buscar projetos:', error);
         return [];
@@ -31,40 +28,28 @@ async function buscarProjetos() {
 }
 
 async function adicionarProjeto(projeto) {
+    console.log("Adicionando projeto ao Sheet2DB:", projeto);
+    
     try {
-        // Gerar ID único para o projeto
-        projeto.id = Date.now().toString();
-        
-        // Adicionar timestamp de criação
-        projeto.created_at = new Date().toISOString();
-        
-        // Converter array de arquivos para string separada por pipe
-        if (Array.isArray(projeto.arquivos)) {
-            projeto.arquivos = projeto.arquivos.join('|');
+        // Converter string de arquivos para array se necessário
+        if (typeof projeto.arquivos === 'string') {
+            projeto.arquivos = projeto.arquivos.split(/[,\n|]/).map(url => url.trim()).filter(url => url);
         }
         
         const response = await fetch(SHEET2DB_API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': SHEET2DB_API_KEY
+                ...(SHEET2DB_API_KEY && { 'x-api-key': SHEET2DB_API_KEY })
             },
             body: JSON.stringify(projeto)
         });
         
         if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+            throw new Error(`Erro ao adicionar projeto: ${response.status}`);
         }
         
         const data = await response.json();
-        
-        // Converter string de arquivos de volta para array para manter consistência
-        if (data.arquivos && typeof data.arquivos === 'string') {
-            data.arquivos = data.arquivos.split('|').filter(url => url.trim() !== '');
-        } else {
-            data.arquivos = [];
-        }
-        
         return data;
     } catch (error) {
         console.error('Erro ao adicionar projeto:', error);
@@ -73,153 +58,133 @@ async function adicionarProjeto(projeto) {
 }
 
 async function atualizarProjeto(id, projeto) {
+    console.log(`Atualizando projeto ID: ${id}`, projeto);
+    
     try {
-        // Converter array de arquivos para string separada por pipe
-        if (Array.isArray(projeto.arquivos)) {
-            projeto.arquivos = projeto.arquivos.join('|');
+        // Converter string de arquivos para array se necessário
+        if (typeof projeto.arquivos === 'string') {
+            projeto.arquivos = projeto.arquivos.split(/[,\n|]/).map(url => url.trim()).filter(url => url);
         }
         
         const response = await fetch(`${SHEET2DB_API_URL}/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': SHEET2DB_API_KEY
+                ...(SHEET2DB_API_KEY && { 'x-api-key': SHEET2DB_API_KEY })
             },
             body: JSON.stringify(projeto)
         });
         
         if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+            throw new Error(`Erro ao atualizar projeto: ${response.status}`);
         }
         
         const data = await response.json();
-        
-        // Converter string de arquivos de volta para array para manter consistência
-        if (data.arquivos && typeof data.arquivos === 'string') {
-            data.arquivos = data.arquivos.split('|').filter(url => url.trim() !== '');
-        } else {
-            data.arquivos = [];
-        }
-        
         return data;
     } catch (error) {
-        console.error('Erro ao atualizar projeto:', error);
+        console.error(`Erro ao atualizar projeto ID: ${id}:`, error);
         return null;
     }
 }
 
 async function excluirProjeto(id) {
+    console.log(`Excluindo projeto ID: ${id}`);
+    
     try {
         const response = await fetch(`${SHEET2DB_API_URL}/${id}`, {
             method: 'DELETE',
             headers: {
-                'x-api-key': SHEET2DB_API_KEY
+                'Content-Type': 'application/json',
+                ...(SHEET2DB_API_KEY && { 'x-api-key': SHEET2DB_API_KEY })
             }
         });
         
         if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+            throw new Error(`Erro ao excluir projeto: ${response.status}`);
         }
         
         return true;
     } catch (error) {
-        console.error('Erro ao excluir projeto:', error);
+        console.error(`Erro ao excluir projeto ID: ${id}:`, error);
         return false;
     }
 }
 
 // Função para obter um projeto específico por ID
 async function buscarProjetoPorId(id) {
+    console.log(`Buscando projeto ID: ${id}`);
+    
     try {
-        const response = await fetch(`${SHEET2DB_API_URL}/${id}?apiKey=${SHEET2DB_API_KEY}`);
+        const response = await fetch(`${SHEET2DB_API_URL}/${id}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(SHEET2DB_API_KEY && { 'x-api-key': SHEET2DB_API_KEY })
+            }
+        });
         
         if (!response.ok) {
-            throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+            throw new Error(`Erro ao buscar projeto: ${response.status}`);
         }
         
         const data = await response.json();
-        
-        // Converter string de arquivos para array
-        if (data.arquivos && typeof data.arquivos === 'string') {
-            data.arquivos = data.arquivos.split('|').filter(url => url.trim() !== '');
-        } else {
-            data.arquivos = [];
-        }
-        
         return data;
     } catch (error) {
-        console.error(`Erro ao buscar projeto com ID ${id}:`, error);
+        console.error(`Erro ao buscar projeto ID: ${id}:`, error);
         return null;
     }
 }
 
 // Função para importar projetos de exemplo
 async function importarProjetosExemplo() {
-    const projetosExemplo = [
-        {
-            nome: "Website Responsivo",
-            departamento: "programacao",
-            status: "em-andamento",
-            dataInicio: "04/10/2025",
-            dataConclusao: "05/10/2025",
-            descricao: "Desenvolvimento de website responsivo com painel administrativo.",
-            arquivos: "https://exemplo.com/wireframe.pdf",
-            emailNotificacoes: "cliente@exemplo.com"
-        },
-        {
-            nome: "Campanha de Email Marketing",
-            departamento: "copywriting",
-            status: "pendente",
-            dataInicio: "10/10/2025",
-            dataConclusao: "15/10/2025",
-            descricao: "Criação de sequência de emails para campanha de lançamento.",
-            arquivos: "",
-            emailNotificacoes: "marketing@exemplo.com"
-        },
-        {
-            nome: "Identidade Visual",
-            departamento: "design",
-            status: "concluido",
-            dataInicio: "01/10/2025",
-            dataConclusao: "03/10/2025",
-            descricao: "Desenvolvimento de logo, paleta de cores e guia de estilo.",
-            arquivos: "https://exemplo.com/logo.ai|https://exemplo.com/styleguide.pdf",
-            emailNotificacoes: "design@exemplo.com"
-        },
-        {
-            nome: "Gestão de Redes Sociais",
-            departamento: "social-media",
-            status: "em-andamento",
-            dataInicio: "01/10/2025",
-            dataConclusao: "31/10/2025",
-            descricao: "Criação e agendamento de conteúdo para Instagram, Facebook e LinkedIn.",
-            arquivos: "https://exemplo.com/calendario-editorial.xlsx",
-            emailNotificacoes: "social@exemplo.com"
-        },
-        {
-            nome: "Prospecção de Clientes",
-            departamento: "prospeccao",
-            status: "em-andamento",
-            dataInicio: "05/10/2025",
-            dataConclusao: "20/10/2025",
-            descricao: "Identificação e abordagem de leads qualificados para serviços de marketing digital.",
-            arquivos: "",
-            emailNotificacoes: "vendas@exemplo.com"
-        }
-    ];
+    console.log("Importando projetos de exemplo");
     
-    const resultados = [];
-    
-    for (const projeto of projetosExemplo) {
-        // Adicionar ID único e timestamp
-        projeto.id = Date.now().toString() + Math.floor(Math.random() * 1000);
-        projeto.created_at = new Date().toISOString();
+    try {
+        const projetosExemplo = [
+            {
+                nome: "Landing Page Produto",
+                departamento: "programacao",
+                status: "pendente",
+                dataInicio: "15/06/2025",
+                dataConclusao: "30/06/2025",
+                descricao: "Desenvolvimento de landing page para lançamento de novo produto.",
+                arquivos: [],
+                emailNotificacoes: "produto@exemplo.com"
+            },
+            {
+                nome: "Conteúdo para Blog",
+                departamento: "copywriting",
+                status: "em-andamento",
+                dataInicio: "01/06/2025",
+                dataConclusao: "15/06/2025",
+                descricao: "Criação de 10 artigos para blog sobre marketing digital.",
+                arquivos: ["https://exemplo.com/pauta-blog.docx"],
+                emailNotificacoes: "blog@exemplo.com"
+            },
+            {
+                nome: "Banners para Campanha",
+                departamento: "design",
+                status: "pendente",
+                dataInicio: "10/06/2025",
+                dataConclusao: "20/06/2025",
+                descricao: "Criação de banners para campanha de remarketing.",
+                arquivos: [],
+                emailNotificacoes: "campanhas@exemplo.com"
+            }
+        ];
         
-        const resultado = await adicionarProjeto(projeto);
-        if (resultado) {
-            resultados.push(resultado);
+        const resultados = [];
+        
+        for (const projeto of projetosExemplo) {
+            const resultado = await adicionarProjeto(projeto);
+            if (resultado) {
+                resultados.push(resultado);
+            }
         }
+        
+        return resultados;
+    } catch (error) {
+        console.error("Erro ao importar projetos de exemplo:", error);
+        return [];
     }
-    
-    return resultados;
 }
