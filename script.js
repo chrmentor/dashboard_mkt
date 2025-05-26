@@ -236,21 +236,21 @@ async function salvarProjeto() {
         }
         console.log("Arquivos processados:", arquivos);
         
-        // Formatar datas para exibição
-        const dataInicioFormatada = formatarData(dataInicio);
-        const dataConclusaoFormatada = formatarData(dataConclusao);
-        console.log("Datas formatadas:", { dataInicioFormatada, dataConclusaoFormatada });
-        
+         // REMOVED: Date formatting logic as API expects YYYY-MM-DD from input
+        // const dataInicioFormatada = formatarData(dataInicio);
+        // const dataConclusaoFormatada = formatarData(dataConclusao);
+        // console.log("Datas formatadas:", { dataInicioFormatada, dataConclusaoFormatada });
+
         const novoProjeto = {
             nome: nome.trim(),
             departamento: departamento.trim(),
             status: status.trim(),
-            dataInicio: dataInicioFormatada,
-            dataConclusao: dataConclusaoFormatada,
+            dataInicio: dataInicio, // Use original value from input (YYYY-MM-DD)
+            dataConclusao: dataConclusao, // Use original value from input (YYYY-MM-DD)
             descricao: descricao.trim(),
             arquivos: arquivos,
             emailNotificacoes: emailNotificacoes.trim()
-        };
+        };     };
         
         console.log("Objeto novoProjeto completo:", novoProjeto);
         
