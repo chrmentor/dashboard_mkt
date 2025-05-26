@@ -316,11 +316,42 @@ async function mostrarDetalhes(id) {
         const detalhesConteudo = document.getElementById('detalhes-conteudo');
         
         let arquivosHTML = '';
-        if (projeto.arquivos && projeto.arquivos.length > 0) {
+        let arquivosArray = [];
+
+        if (projeto.arquivos) {
+            if (Array.isArray(projeto.arquivos)) {
+                // Filter empty items if it's already an array
+                arquivosArray = projeto.arquivos.filter(a => a && String(a).trim() !== ''); 
+            } else if (typeof projeto.arquivos === 'string' && projeto.arquivos.trim() !== '') {
+                // Split by comma or newline, trim whitespace, filter empty items
+                arquivosArray = projeto.arquivos.split(/[\n,]/) 
+                                         .map(a => a.trim())      
+                                         .filter(a => a !== ''); 
+            }
+        }
+
+        if (arquivosArray.length > 0) {
             arquivosHTML = `
                 <h6>Arquivos:</h6>
                 <ul>
-                    ${projeto.arquivos.map(arquivo => `<li><a href="${arquivo}" target="_blank">${arquivo}</a></li>`).join('')}
+                    ${arquivosArray.map(arquivo => {
+                        // Simple check if it looks like a URL
+                        if (typeof arquivo === 'string' && (arquivo.startsWith('http://') || arquivo.startsWith('https://'))) {
+                            let linkName = arquivo;
+                            try {
+                                // Attempt to create a more readable link name from URL
+                                const url = new URL(arquivo);
+                                linkName = url.hostname + (url.pathname !== '/' ? url.pathname : '');
+                            } catch (e) { 
+                                // If URL parsing fails, use the original string
+                                linkName = arquivo; 
+                            }
+                            return `<li><a href="${arquivo}" target="_blank">${linkName}</a></li>`;
+                        } else {
+                            // If it's not a URL, just display the text
+                            return `<li>${arquivo}</li>`;
+                        }
+                    }).join('')}
                 </ul>
             `;
         }
